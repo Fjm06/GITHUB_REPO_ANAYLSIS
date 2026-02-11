@@ -16,6 +16,13 @@ from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
 import shutil
 import time
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+import markdown2
 
 load_dotenv()
 
@@ -276,6 +283,131 @@ def load_vectorstore(project_name, embeddings):
         st.error(f"Error loading vectorstore: {e}")
         return None
 
+def generate_report(project_name, chat_history, project_data):
+    """Generate PDF report of repository analysis"""
+    try:
+        # Create reports directory
+        os.makedirs('reports', exist_ok=True)
+        
+        # Generate filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"reports/{project_name}_report_{timestamp}.pdf"
+        
+        # Create PDF
+        doc = SimpleDocTemplate(filename, pagesize=letter)
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#1f77b4'),
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
+        
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=16,
+            textColor=colors.HexColor('#2ca02c'),
+            spaceAfter=12,
+            spaceBefore=12
+        )
+        
+        # Title
+        story.append(Paragraph(f"Repository Analysis Report", title_style))
+        story.append(Paragraph(f"<b>Project:</b> {project_name}", styles['Normal']))
+        story.append(Paragraph(f"<b>Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Project Information
+        story.append(Paragraph("Project Information", heading_style))
+        
+        metadata = project_data.get('metadata', {})
+        info_data = [
+            ['Repository URL', project_data.get('url', 'N/A')],
+            ['Files Indexed', str(project_data.get('files', 0))],
+            ['Code Chunks', str(project_data.get('chunks', 0))],
+            ['Language', metadata.get('language', 'N/A')],
+            ['Stars', str(metadata.get('stars', 0))],
+            ['Forks', str(metadata.get('forks', 0))],
+            ['Open Issues', str(metadata.get('open_issues', 0))],
+        ]
+        
+        info_table = Table(info_data, colWidths=[2*inch, 4*inch])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e8e8e8')),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 0.3*inch))
+        
+        # Latest Commit
+        if 'latest_commit' in metadata:
+            story.append(Paragraph("Latest Commit", heading_style))
+            commit = metadata['latest_commit']
+            commit_data = [
+                ['SHA', commit.get('sha', 'N/A')],
+                ['Message', commit.get('message', 'N/A')],
+                ['Author', commit.get('author', 'N/A')],
+                ['Date', commit.get('date', 'N/A')[:10]],
+            ]
+            commit_table = Table(commit_data, colWidths=[1.5*inch, 4.5*inch])
+            commit_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#e8e8e8')),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                ('GRID', (0, 0), (-1, -1), 1, colors.grey)
+            ]))
+            story.append(commit_table)
+            story.append(Spacer(1, 0.3*inch))
+        
+        # Chat History
+        if chat_history:
+            story.append(PageBreak())
+            story.append(Paragraph("Analysis & Conversations", heading_style))
+            story.append(Spacer(1, 0.2*inch))
+            
+            for i, msg in enumerate(chat_history):
+                role = msg['role'].upper()
+                content = msg['content']
+                
+                # Role header
+                role_style = ParagraphStyle(
+                    f'Role{i}',
+                    parent=styles['Normal'],
+                    fontSize=12,
+                    textColor=colors.HexColor('#1f77b4') if role == 'USER' else colors.HexColor('#2ca02c'),
+                    fontName='Helvetica-Bold',
+                    spaceAfter=6
+                )
+                story.append(Paragraph(f"{role}:", role_style))
+                
+                # Content (limit length for PDF)
+                content_preview = content[:1000] + "..." if len(content) > 1000 else content
+                story.append(Paragraph(content_preview.replace('\n', '<br/>'), styles['Normal']))
+                story.append(Spacer(1, 0.2*inch))
+        
+        # Build PDF
+        doc.build(story)
+        
+        return filename
+    
+    except Exception as e:
+        st.error(f"Error generating report: {e}")
+        return None
+
 def get_last_commit_hash(repo_path):
     """Get last commit hash and info from local repo"""
     try:
@@ -443,6 +575,26 @@ if st.session_state.current_project:
     project = st.session_state.projects[st.session_state.current_project]
     
     st.title(f"💬 Chat with {st.session_state.current_project}")
+    
+    # Report generation button
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("📄 Generate Report", help="Create PDF report of this analysis"):
+            with st.spinner("Generating report..."):
+                report_file = generate_report(
+                    st.session_state.current_project,
+                    st.session_state.chat_history,
+                    project
+                )
+                if report_file:
+                    with open(report_file, 'rb') as f:
+                        st.download_button(
+                            label="⬇️ Download Report",
+                            data=f,
+                            file_name=os.path.basename(report_file),
+                            mime="application/pdf"
+                        )
+                    st.success(f"✓ Report generated: {os.path.basename(report_file)}")
     
     # Project info
     with st.expander("📊 Project Information", expanded=False):
