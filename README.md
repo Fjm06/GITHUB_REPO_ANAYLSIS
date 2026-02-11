@@ -8,9 +8,12 @@ An intelligent AI-powered tool that analyzes GitHub repositories and enables con
 - 🔄 **Auto-Updates** - Detect new commits and automatically re-index
 - 💾 **Persistent Sessions** - Projects and chat history saved across sessions
 - 💬 **Conversational AI** - Natural language queries powered by Mistral-7B
-- 🌲 **Pinecone Vector Database** - Cloud-based vector search for scalability
+- 🗄️ **SQLite Chat Persistence** - All conversations automatically saved and restored
+- 🌲 **ChromaDB Vector Store** - Local vector search for fast retrieval
 - 🌍 **Multi-Language Support** - Python, JavaScript, Java, C/C++, Go, Rust, Ruby, PHP, and more
 - 📊 **Rich Metadata** - GitHub stats, branches, issues, and commit history
+- 📄 **PDF Report Generation** - Export analysis and chat history to PDF
+- 🔄 **Latest Commit Tracking** - View and query recent repository changes
 
 ## 🚀 Quick Start
 
@@ -18,7 +21,6 @@ An intelligent AI-powered tool that analyzes GitHub repositories and enables con
 
 - Python 3.8+
 - HuggingFace API Token
-- Pinecone API Key (free tier available)
 - GitHub Token (optional, for private repos)
 
 ### Installation
@@ -37,7 +39,6 @@ pip install -r requirements.txt
 3. Create `.env` file with your credentials:
 ```env
 HUGGINGFACEHUB_API_TOKEN=your_huggingface_token
-PINECONE_API_KEY=your_pinecone_api_key
 GITHUB_TOKEN=your_github_token_optional
 ```
 
@@ -49,10 +50,12 @@ streamlit run streamlit_app.py
 ## 🎯 Usage
 
 1. **Add Repository**: Enter GitHub URL and project name in the sidebar
-2. **Select Project**: Click on a project to start chatting
+2. **Select Project**: Click on a project to start chatting (chat history loads automatically)
 3. **Ask Questions**: Query the codebase naturally
 4. **Update**: Use 🔄 button to check for new commits
-5. **Delete**: Use 🗑️ button to remove projects
+5. **Clear Chat**: Use 🗑️ button to clear chat history for current project
+6. **Generate Report**: Use 📄 button to export analysis to PDF
+7. **Delete**: Use 🗑️ button in sidebar to remove projects
 
 ## 📝 Example Questions
 
@@ -62,15 +65,20 @@ streamlit run streamlit_app.py
 - "What are the key dependencies?"
 - "Show me the authentication flow"
 - "What design patterns are used?"
+- "What was the latest commit about?"
+- "When was this code last pushed?"
+- "Who made the most recent changes?"
 
 ## 🛠️ Technology Stack
 
 - **Frontend**: Streamlit
 - **LLM**: Mistral-7B-Instruct-v0.2 (via HuggingFace)
 - **Embeddings**: sentence-transformers/all-MiniLM-L6-v2
-- **Vector DB**: Pinecone
+- **Vector DB**: ChromaDB (local storage)
+- **Chat Persistence**: SQLite3
 - **Framework**: LangChain
 - **Git Integration**: GitPython, PyGithub
+- **Report Generation**: ReportLab, Markdown2
 
 ## 📦 Project Structure
 
@@ -80,6 +88,10 @@ streamlit run streamlit_app.py
 ├── src/
 │   └── helper.py             # Helper functions
 ├── requirements.txt          # Python dependencies
+├── projects.json             # Project metadata (auto-generated)
+├── chat_sessions.db          # SQLite chat history (auto-generated)
+├── db/                       # ChromaDB vector stores (auto-generated)
+├── repos/                    # Cloned repositories (auto-generated)
 ├── .env                      # Environment variables (not in repo)
 └── README.md                 # This file
 ```
@@ -93,7 +105,6 @@ streamlit run streamlit_app.py
 3. Connect your GitHub repository
 4. Add secrets in Streamlit Cloud dashboard:
    - `HUGGINGFACEHUB_API_TOKEN`
-   - `PINECONE_API_KEY`
    - `GITHUB_TOKEN` (optional)
 5. Deploy!
 
@@ -103,12 +114,6 @@ streamlit run streamlit_app.py
 1. Go to [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 2. Create new token
 3. Copy and add to `.env`
-
-### Pinecone API Key
-1. Sign up at [pinecone.io](https://www.pinecone.io/)
-2. Go to API Keys section
-3. Copy your API key
-4. Run `python setup_pinecone.py` to create index
 
 ### GitHub Token (Optional)
 1. Go to [github.com/settings/tokens](https://github.com/settings/tokens)
@@ -149,5 +154,6 @@ Created with ❤️ by [Fjm06](https://github.com/Fjm06)
 
 - LangChain for the RAG framework
 - HuggingFace for LLM and embeddings
-- Pinecone for vector database
+- ChromaDB for vector database
 - Streamlit for the amazing UI framework
+- ReportLab for PDF generation

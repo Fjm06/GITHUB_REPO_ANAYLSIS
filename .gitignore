@@ -45,6 +45,7 @@ Thumbs.db
 repos/
 db/
 *.sqlite3
+chat_sessions.db
 projects.json
 test_*.py
 check_*.py

@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import json
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 from git import Repo
@@ -18,6 +19,99 @@ import shutil
 import time
 
 load_dotenv()
+
+# Database setup
+DB_PATH = "chat_sessions.db"
+
+def init_database():
+    """Initialize SQLite database for chat sessions"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Create chat_sessions table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_name TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def save_message(project_name, role, content):
+    """Save a chat message to database"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO chat_sessions (project_name, role, content) VALUES (?, ?, ?)',
+            (project_name, role, content)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        st.error(f"Error saving message: {e}")
+
+def load_chat_history(project_name):
+    """Load chat history for a project from database"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT role, content, timestamp FROM chat_sessions WHERE project_name = ? ORDER BY timestamp',
+            (project_name,)
+        )
+        messages = []
+        for row in cursor.fetchall():
+            messages.append({
+                'role': row[0],
+                'content': row[1],
+                'timestamp': row[2]
+            })
+        conn.close()
+        return messages
+    except Exception as e:
+        st.error(f"Error loading chat history: {e}")
+        return []
+
+def clear_chat_history(project_name):
+    """Clear chat history for a project"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute('DELETE FROM chat_sessions WHERE project_name = ?', (project_name,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        st.error(f"Error clearing chat history: {e}")
+        return False
+
+def get_chat_stats(project_name):
+    """Get chat statistics for a project"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            'SELECT COUNT(*), MIN(timestamp), MAX(timestamp) FROM chat_sessions WHERE project_name = ?',
+            (project_name,)
+        )
+        result = cursor.fetchone()
+        conn.close()
+        return {
+            'total_messages': result[0] if result[0] else 0,
+            'first_message': result[1],
+            'last_message': result[2]
+        }
+    except Exception as e:
+        return {'total_messages': 0, 'first_message': None, 'last_message': None}
+
+# Initialize database on startup
+init_database()
 
 # Page config
 st.set_page_config(
@@ -546,7 +640,8 @@ with st.sidebar:
             with col1:
                 if st.button(f"📁 {proj_name}", key=f"select_{proj_name}", use_container_width=True):
                     st.session_state.current_project = proj_name
-                    st.session_state.chat_history = []
+                    # Load chat history from database
+                    st.session_state.chat_history = load_chat_history(proj_name)
                     st.rerun()
             
             with col2:
@@ -585,9 +680,15 @@ if st.session_state.current_project:
     
     st.title(f"💬 Chat with {st.session_state.current_project}")
     
-    # Report generation button
-    col1, col2 = st.columns([6, 1])
+    # Report generation and clear chat buttons
+    col1, col2, col3 = st.columns([5, 1, 1])
     with col2:
+        if st.button("🗑️ Clear Chat", help="Clear chat history for this project"):
+            if clear_chat_history(st.session_state.current_project):
+                st.session_state.chat_history = []
+                st.success("✓ Chat history cleared!")
+                st.rerun()
+    with col3:
         if st.button("📄 Generate Report", help="Create PDF report of this analysis"):
             with st.spinner("Generating report..."):
                 report_file = generate_report(
@@ -607,7 +708,7 @@ if st.session_state.current_project:
     
     # Project info
     with st.expander("📊 Project Information", expanded=False):
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         
         with col1:
             st.metric("Files Indexed", project.get('files', 0))
@@ -625,6 +726,14 @@ if st.session_state.current_project:
                 st.metric("Last Updated", project['last_updated'][:10])
             if 'open_issues' in metadata:
                 st.metric("Open Issues", metadata['open_issues'])
+        
+        with col4:
+            # Chat statistics
+            chat_stats = get_chat_stats(st.session_state.current_project)
+            st.metric("Chat Messages", chat_stats['total_messages'])
+            if chat_stats['last_message']:
+                last_msg_date = chat_stats['last_message'][:10]
+                st.metric("Last Chat", last_msg_date)
         
         # Latest Commit Info
         if 'latest_commit' in metadata:
@@ -659,6 +768,8 @@ if st.session_state.current_project:
     if prompt := st.chat_input("Ask anything about this repository..."):
         # Add user message
         st.session_state.chat_history.append({'role': 'user', 'content': prompt})
+        # Save to database
+        save_message(st.session_state.current_project, 'user', prompt)
         
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -774,8 +885,9 @@ Answer:"""
                         response = qa_chain.invoke(prompt)
                         st.markdown(response)
                         
-                        # Add to history
+                        # Add to history and save to database
                         st.session_state.chat_history.append({'role': 'assistant', 'content': response})
+                        save_message(st.session_state.current_project, 'assistant', response)
                     else:
                         st.error("Vector database not found. Please re-index the project.")
                 
@@ -783,6 +895,7 @@ Answer:"""
                     error_msg = f"Error: {str(e)}"
                     st.error(error_msg)
                     st.session_state.chat_history.append({'role': 'assistant', 'content': error_msg})
+                    save_message(st.session_state.current_project, 'assistant', error_msg)
 
 else:
     st.title("🤖 GitHub Repo AI Agent")
@@ -794,16 +907,18 @@ else:
     **Features:**
     - 📁 **Multiple Projects** - Manage multiple repositories
     - 🔄 **Auto-Updates** - Check for new commits and re-index
-    - 💾 **Persistent Sessions** - Your projects are saved
+    - 💾 **Persistent Sessions** - Your projects and chat history are saved
     - 💬 **Conversational** - Ask questions naturally
     - 📊 **Rich Context** - Analyzes code, structure, and metadata
     - 🚀 **Fast Vector Search** - Powered by ChromaDB
     - 🔄 **Commit Tracking** - Shows latest commit information
+    - 💬 **Chat History** - All conversations are saved and restored
     
     **Get Started:**
     1. Add a repository using the sidebar
     2. Select a project to start chatting
     3. Ask questions about the code!
+    4. Your chat history will be saved automatically
     
     **Example Questions:**
     - "What does this repository do?"
