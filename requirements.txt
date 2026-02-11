@@ -6,7 +6,7 @@ langchain-pinecone>=0.2.0
 langchain-openai>=0.3.11
 
 # Vector DB
-pinecone-client>=6.0.0
+pinecone>=7.0.0
 
 # Transformers + HuggingFace
 transformers>=4.40.0
