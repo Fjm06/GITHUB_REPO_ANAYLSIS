@@ -14,7 +14,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
-from pinecone import Pinecone
+import pinecone
 import shutil
 import time
 
@@ -22,6 +22,22 @@ load_dotenv()
 
 # Pinecone configuration
 PINECONE_INDEX_NAME = "decoderbot"
+
+# Initialize Pinecone (v5 API)
+def init_pinecone():
+    api_key = os.getenv('PINECONE_API_KEY')
+    environment = os.getenv('PINECONE_ENVIRONMENT', 'us-east-1-aws')
+    
+    if not api_key:
+        st.error("PINECONE_API_KEY not found in environment variables")
+        return False
+    
+    try:
+        pinecone.init(api_key=api_key, environment=environment)
+        return True
+    except Exception as e:
+        st.error(f"Failed to initialize Pinecone: {e}")
+        return False
 
 # Page config
 st.set_page_config(
@@ -323,16 +339,21 @@ def update_repo(project_name):
 with st.sidebar:
     st.title("🤖 GitHub Repo AI Agent")
     
+    # Initialize Pinecone
+    pinecone_ready = init_pinecone()
+    
     # Pinecone status
-    try:
-        pc = Pinecone(api_key=os.getenv('PINECONE_API_KEY'))
-        index = pc.Index(PINECONE_INDEX_NAME)
-        stats = index.describe_index_stats()
-        total_vectors = stats.get('total_vector_count', 0)
-        st.success(f"🌲 Pinecone Connected")
-        st.caption(f"Vectors: {total_vectors:,} | Index: {PINECONE_INDEX_NAME}")
-    except Exception as e:
-        st.error(f"⚠️ Pinecone Error: {str(e)[:50]}")
+    if pinecone_ready:
+        try:
+            index = pinecone.Index(PINECONE_INDEX_NAME)
+            stats = index.describe_index_stats()
+            total_vectors = stats.get('total_vector_count', 0)
+            st.success(f"🌲 Pinecone Connected")
+            st.caption(f"Vectors: {total_vectors:,} | Index: {PINECONE_INDEX_NAME}")
+        except Exception as e:
+            st.warning(f"⚠️ Pinecone: {str(e)[:50]}")
+    else:
+        st.error("⚠️ Pinecone not initialized")
     
     st.markdown("---")
     st.subheader("Add New Repository")
@@ -409,8 +430,7 @@ with st.sidebar:
                 if st.button("🗑️", key=f"delete_{proj_name}", help="Delete project"):
                     # Delete from Pinecone
                     try:
-                        pc = Pinecone(api_key=os.getenv('PINECONE_API_KEY'))
-                        index = pc.Index(PINECONE_INDEX_NAME)
+                        index = pinecone.Index(PINECONE_INDEX_NAME)
                         index.delete(namespace=proj_name, delete_all=True)
                     except:
                         pass
