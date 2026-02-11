@@ -1,7 +1,9 @@
 # 🤖 GitHub Repository Analysis AI Agent
 
-An intelligent AI-powered chatbot that analyzes GitHub repositories and enables natural language conversations about codebases. Built with Streamlit, LangChain, and powered by Mistral-7B LLM with persistent chat history.\n
-Live Demo: https://fjm06-github-repo-anaylsis-streamlit-app-ye1fpo.streamlit.app/
+An intelligent AI-powered chatbot that analyzes GitHub repositories and enables natural language conversations about codebases. Built with Streamlit, LangChain, and powered by Mistral-7B LLM with persistent chat history.
+
+
+#Live Demo: https://fjm06-github-repo-anaylsis-streamlit-app-ye1fpo.streamlit.app/
 
 ## ✨ Features
 
