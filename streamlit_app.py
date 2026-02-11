@@ -16,13 +16,6 @@ from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
 import shutil
 import time
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
-import markdown2
 
 load_dotenv()
 
@@ -286,6 +279,14 @@ def load_vectorstore(project_name, embeddings):
 def generate_report(project_name, chat_history, project_data):
     """Generate PDF report of repository analysis"""
     try:
+        # Import reportlab only when needed
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Table, TableStyle
+        from reportlab.lib import colors
+        from reportlab.lib.enums import TA_CENTER
+        
         # Create reports directory
         os.makedirs('reports', exist_ok=True)
         
@@ -396,7 +397,10 @@ def generate_report(project_name, chat_history, project_data):
                 
                 # Content (limit length for PDF)
                 content_preview = content[:1000] + "..." if len(content) > 1000 else content
-                story.append(Paragraph(content_preview.replace('\n', '<br/>'), styles['Normal']))
+                # Escape special characters for PDF
+                content_preview = content_preview.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                content_preview = content_preview.replace('\n', '<br/>')
+                story.append(Paragraph(content_preview, styles['Normal']))
                 story.append(Spacer(1, 0.2*inch))
         
         # Build PDF
@@ -404,8 +408,13 @@ def generate_report(project_name, chat_history, project_data):
         
         return filename
     
+    except ImportError as e:
+        st.error(f"Report generation requires reportlab. Please install it: pip install reportlab")
+        return None
     except Exception as e:
         st.error(f"Error generating report: {e}")
+        import traceback
+        st.error(traceback.format_exc())
         return None
 
 def get_last_commit_hash(repo_path):
