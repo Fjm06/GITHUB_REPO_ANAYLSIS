@@ -96,6 +96,9 @@ def get_repo_metadata(repo_url, github_token=None):
         
         repo = g.get_repo(f"{owner}/{repo_name}")
         
+        # Get latest commit
+        latest_commit = repo.get_commits()[0]
+        
         metadata = {
             'name': repo.name,
             'description': repo.description,
@@ -105,6 +108,13 @@ def get_repo_metadata(repo_url, github_token=None):
             'last_commit': repo.pushed_at.isoformat(),
             'open_issues': repo.open_issues_count,
             'branches': [b.name for b in repo.get_branches()[:10]],
+            'latest_commit': {
+                'sha': latest_commit.sha[:7],
+                'message': latest_commit.commit.message,
+                'author': latest_commit.commit.author.name,
+                'date': latest_commit.commit.author.date.isoformat(),
+                'url': latest_commit.html_url
+            }
         }
         return metadata
     except Exception as e:
@@ -267,9 +277,16 @@ def load_vectorstore(project_name, embeddings):
         return None
 
 def get_last_commit_hash(repo_path):
+    """Get last commit hash and info from local repo"""
     try:
         repo = Repo(repo_path)
-        return repo.head.commit.hexsha
+        commit = repo.head.commit
+        return {
+            'sha': commit.hexsha[:7],
+            'message': commit.message.strip(),
+            'author': commit.author.name,
+            'date': commit.committed_datetime.isoformat()
+        }
     except:
         return None
 
@@ -448,7 +465,25 @@ if st.session_state.current_project:
             if 'open_issues' in metadata:
                 st.metric("Open Issues", metadata['open_issues'])
         
+        # Latest Commit Info
+        if 'latest_commit' in metadata:
+            st.markdown("---")
+            st.markdown("### 🔄 Latest Commit")
+            commit = metadata['latest_commit']
+            
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.markdown(f"**Message:** {commit.get('message', 'N/A')}")
+                st.markdown(f"**Author:** {commit.get('author', 'N/A')}")
+            with col2:
+                st.markdown(f"**SHA:** `{commit.get('sha', 'N/A')}`")
+                st.markdown(f"**Date:** {commit.get('date', 'N/A')[:10]}")
+            
+            if 'url' in commit:
+                st.markdown(f"[View Commit on GitHub]({commit['url']})")
+        
         if 'branches' in metadata:
+            st.markdown("---")
             st.write("**Branches:**", ", ".join(metadata['branches'][:5]))
     
     # Chat interface
@@ -505,6 +540,7 @@ Response Guidelines:
    - Point out dependencies and relationships between components
    - Highlight potential issues, bugs, or improvements when relevant
    - Consider language-specific idioms and best practices
+   - Reference commit history or recent changes when relevant
 
 3. **Technical Depth**
    - Provide context about why code is written a certain way
