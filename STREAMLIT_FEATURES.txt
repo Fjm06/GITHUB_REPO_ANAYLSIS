@@ -1,0 +1,69 @@
+🤖 GitHub Repo AI Agent - Enhanced Features
+============================================
+
+✅ ALL REQUESTED FEATURES IMPLEMENTED:
+
+1. MULTIPLE PROJECTS SUPPORT
+   - Add unlimited GitHub repositories
+   - Each project stored separately with its own vector database
+   - Switch between projects instantly
+   - Persistent storage (projects.json)
+
+2. REAL-TIME UPDATES
+   - 🔄 Update button for each project
+   - Checks for new commits on GitHub
+   - Auto-detects changes and re-indexes
+   - Keeps context fresh with latest code
+
+3. PERSISTENT SESSIONS
+   - All projects saved to projects.json
+   - Chat history maintained per session
+   - Return anytime and continue where you left off
+   - Vector databases persist in db/ folder
+
+4. RICH CONTEXT
+   - Analyzes Python code files
+   - Fetches GitHub metadata (stars, forks, issues, branches)
+   - Tracks commit history
+   - Shows project statistics
+
+5. CONVERSATIONAL INTERFACE
+   - Natural language queries
+   - Markdown-formatted responses
+   - Context-aware answers using RAG
+   - Chat history per project
+
+USAGE:
+------
+1. Open: http://localhost:8501
+2. Add repository in sidebar (URL + project name)
+3. Optional: Add GitHub token for private repos
+4. Select project to start chatting
+5. Use 🔄 button to check for updates
+6. Use 🗑️ button to delete projects
+
+CREDENTIALS NEEDED:
+-------------------
+✓ HuggingFace API Token - Already configured in .env
+✓ GitHub Token (optional) - For private repos and higher API limits
+  - Get from: https://github.com/settings/tokens
+  - Add when creating a project or leave empty for public repos
+
+FEATURES COMPARISON:
+--------------------
+Flask App (app.py):
+- Single project at a time
+- Manual repo management
+- Basic chat interface
+
+Streamlit App (streamlit_app.py): ⭐ RECOMMENDED
+- Multiple projects
+- Auto-update detection
+- Persistent sessions
+- Rich metadata
+- Better UI/UX
+- Project management
+
+BOTH APPS CAN RUN SIMULTANEOUSLY:
+- Flask: http://127.0.0.1:8080
+- Streamlit: http://localhost:8501

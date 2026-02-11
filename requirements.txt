@@ -2,9 +2,11 @@
 langchain>=0.2.0
 langchain-community>=0.2.0
 langchain-huggingface>=0.0.3
+langchain-pinecone>=0.2.0
+langchain-openai>=0.3.11
 
 # Vector DB
-chromadb>=0.5.0
+pinecone-client>=6.0.0
 
 # Transformers + HuggingFace
 transformers>=4.40.0
@@ -16,3 +18,7 @@ tiktoken
 flask
 GitPython
 python-dotenv
+PyGithub
+streamlit
+watchdog
+sqlalchemy

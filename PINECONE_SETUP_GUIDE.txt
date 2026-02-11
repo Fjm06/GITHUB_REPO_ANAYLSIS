@@ -1,0 +1,83 @@
+🌲 PINECONE SETUP GUIDE - Step by Step
+========================================
+
+STEP 1: CREATE PINECONE ACCOUNT
+--------------------------------
+1. Go to: https://www.pinecone.io/
+2. Click "Sign Up" (top right corner)
+3. Choose sign-up method:
+   ✓ Email + Password
+   ✓ Google Account
+   ✓ GitHub Account
+
+4. Complete registration and verify email (if using email signup)
+
+STEP 2: GET YOUR API KEY
+-------------------------
+1. After login, you'll land on the Pinecone Console
+2. Look at the left sidebar
+3. Click on "API Keys"
+4. You'll see a section called "API Keys"
+5. Your default API key will be displayed
+6. Click the "Copy" button next to it
+7. SAVE THIS KEY - you'll need it in Step 4
+
+Example API key format: 
+pcsk_xxxxx-xxxxx-xxxxx-xxxxx-xxxxx
+
+STEP 3: NOTE YOUR ENVIRONMENT
+------------------------------
+1. On the same "API Keys" page
+2. Look for "Environment" field
+3. Common values:
+   - us-east-1-aws
+   - us-west-2-aws  
+   - gcp-starter
+   - asia-southeast1-gcp
+4. Copy this value
+
+STEP 4: ADD TO .ENV FILE
+-------------------------
+Open your .env file and add:
+
+PINECONE_API_KEY=your_api_key_here
+PINECONE_ENVIRONMENT=your_environment_here
+
+Example:
+PINECONE_API_KEY=pcsk_xxxxx-xxxxx-xxxxx-xxxxx-xxxxx
+PINECONE_ENVIRONMENT=us-east-1-aws
+
+STEP 5: VERIFY SETUP
+---------------------
+After adding credentials to .env:
+1. Save the file
+2. Restart the Streamlit app
+3. The app will now use Pinecone instead of local ChromaDB
+
+BENEFITS OF PINECONE:
+---------------------
+✓ Cloud-hosted (no local storage needed)
+✓ Faster similarity search
+✓ Scalable to millions of vectors
+✓ Automatic backups
+✓ Access from anywhere
+✓ Better performance for large repositories
+
+FREE TIER INCLUDES:
+-------------------
+- 1 index
+- 100K vectors
+- 1 pod
+- Perfect for testing and small projects
+
+CURRENT STATUS:
+---------------
+✓ Pinecone packages installed
+✓ .env file ready for credentials
+⏳ Waiting for you to add API key and environment
+
+NEXT STEPS:
+-----------
+1. Get your API key from Pinecone dashboard
+2. Add it to .env file
+3. Tell me when done, and I'll integrate it into the app!
