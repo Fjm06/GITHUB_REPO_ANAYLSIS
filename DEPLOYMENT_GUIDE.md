@@ -29,14 +29,12 @@ Add your credentials in TOML format:
 
 ```toml
 HUGGINGFACEHUB_API_TOKEN = "your_huggingface_token_here"
-PINECONE_API_KEY = "your_pinecone_api_key_here"
-PINECONE_ENVIRONMENT = "us-east-1-aws"
 GITHUB_TOKEN = "your_github_token_here"
 ```
 
 **Note:** 
 - Use your actual tokens from .env file
-- PINECONE_ENVIRONMENT: Check your Pinecone dashboard (usually `us-east-1-aws` or `gcp-starter`)
+- Pinecone is not required for Streamlit Cloud (uses ChromaDB instead)
 
 ### 2.4 Deploy
 1. Click "Deploy!"

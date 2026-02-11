@@ -9,35 +9,15 @@ from langchain_text_splitters import Language, RecursiveCharacterTextSplitter
 from langchain_community.document_loaders.generic import GenericLoader
 from langchain_community.document_loaders.parsers import LanguageParser
 from langchain_huggingface import HuggingFaceEmbeddings, ChatHuggingFace, HuggingFaceEndpoint
-from langchain_pinecone import PineconeVectorStore
+from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
-import pinecone
 import shutil
 import time
 
 load_dotenv()
-
-# Pinecone configuration
-PINECONE_INDEX_NAME = "decoderbot"
-
-# Initialize Pinecone (v5 API)
-def init_pinecone():
-    api_key = os.getenv('PINECONE_API_KEY')
-    environment = os.getenv('PINECONE_ENVIRONMENT', 'us-east-1-aws')
-    
-    if not api_key:
-        st.error("PINECONE_API_KEY not found in environment variables")
-        return False
-    
-    try:
-        pinecone.init(api_key=api_key, environment=environment)
-        return True
-    except Exception as e:
-        st.error(f"Failed to initialize Pinecone: {e}")
-        return False
 
 # Page config
 st.set_page_config(
@@ -258,13 +238,13 @@ def split_documents(documents):
     return all_chunks
 
 def create_vectorstore(text_chunks, project_name, embeddings):
-    """Create Pinecone vectorstore with namespace for project"""
+    """Create Chroma vectorstore for project"""
     try:
-        vectorstore = PineconeVectorStore.from_documents(
+        persist_dir = f"db/{project_name}"
+        vectorstore = Chroma.from_documents(
             documents=text_chunks,
             embedding=embeddings,
-            index_name=PINECONE_INDEX_NAME,
-            namespace=project_name  # Each project gets its own namespace
+            persist_directory=persist_dir
         )
         return vectorstore
     except Exception as e:
@@ -272,14 +252,16 @@ def create_vectorstore(text_chunks, project_name, embeddings):
         return None
 
 def load_vectorstore(project_name, embeddings):
-    """Load Pinecone vectorstore for specific project"""
+    """Load Chroma vectorstore for specific project"""
     try:
-        vectorstore = PineconeVectorStore(
-            index_name=PINECONE_INDEX_NAME,
-            embedding=embeddings,
-            namespace=project_name
-        )
-        return vectorstore
+        persist_dir = f"db/{project_name}"
+        if os.path.exists(persist_dir):
+            vectorstore = Chroma(
+                persist_directory=persist_dir,
+                embedding_function=embeddings
+            )
+            return vectorstore
+        return None
     except Exception as e:
         st.error(f"Error loading vectorstore: {e}")
         return None
@@ -339,21 +321,14 @@ def update_repo(project_name):
 with st.sidebar:
     st.title("🤖 GitHub Repo AI Agent")
     
-    # Initialize Pinecone
-    pinecone_ready = init_pinecone()
-    
-    # Pinecone status
-    if pinecone_ready:
-        try:
-            index = pinecone.Index(PINECONE_INDEX_NAME)
-            stats = index.describe_index_stats()
-            total_vectors = stats.get('total_vector_count', 0)
-            st.success(f"🌲 Pinecone Connected")
-            st.caption(f"Vectors: {total_vectors:,} | Index: {PINECONE_INDEX_NAME}")
-        except Exception as e:
-            st.warning(f"⚠️ Pinecone: {str(e)[:50]}")
-    else:
-        st.error("⚠️ Pinecone not initialized")
+    # Vector DB status
+    try:
+        db_size = sum(f.stat().st_size for f in Path('db').rglob('*') if f.is_file()) if os.path.exists('db') else 0
+        db_size_mb = db_size / (1024 * 1024)
+        st.success(f"💾 Vector DB Ready")
+        st.caption(f"Storage: {db_size_mb:.2f} MB")
+    except:
+        st.info("💾 Vector DB: Ready")
     
     st.markdown("---")
     st.subheader("Add New Repository")
@@ -428,17 +403,14 @@ with st.sidebar:
             
             with col3:
                 if st.button("🗑️", key=f"delete_{proj_name}", help="Delete project"):
-                    # Delete from Pinecone
-                    try:
-                        index = pinecone.Index(PINECONE_INDEX_NAME)
-                        index.delete(namespace=proj_name, delete_all=True)
-                    except:
-                        pass
-                    
-                    # Delete local repo
+                    # Delete files
                     repo_path = f"repos/{proj_name}"
+                    db_path = f"db/{proj_name}"
+                    
                     if os.path.exists(repo_path):
                         shutil.rmtree(repo_path, onerror=handle_remove_readonly)
+                    if os.path.exists(db_path):
+                        shutil.rmtree(db_path, onerror=handle_remove_readonly)
                     
                     del st.session_state.projects[proj_name]
                     save_projects()
@@ -603,7 +575,7 @@ else:
     - 💾 **Persistent Sessions** - Your projects are saved
     - 💬 **Conversational** - Ask questions naturally
     - 📊 **Rich Context** - Analyzes code, structure, and metadata
-    - 🌲 **Pinecone Powered** - Cloud-based vector search for better performance
+    - 🚀 **Fast Vector Search** - Powered by ChromaDB
     
     **Get Started:**
     1. Add a repository using the sidebar
