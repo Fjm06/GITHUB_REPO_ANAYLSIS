@@ -514,12 +514,31 @@ if st.session_state.current_project:
                     vectordb = load_vectorstore(st.session_state.current_project, embeddings)
                     
                     if vectordb:
+                        # Get project metadata for context
+                        project_meta = st.session_state.projects.get(st.session_state.current_project, {})
+                        metadata = project_meta.get('metadata', {})
+                        latest_commit = metadata.get('latest_commit', {})
+                        
+                        # Add commit context to prompt if available
+                        commit_context = ""
+                        if latest_commit:
+                            commit_context = f"""
+
+Repository Commit Information:
+- Latest Commit SHA: {latest_commit.get('sha', 'N/A')}
+- Commit Message: {latest_commit.get('message', 'N/A')}
+- Author: {latest_commit.get('author', 'N/A')}
+- Date: {latest_commit.get('date', 'N/A')}
+- Repository: {project_meta.get('url', 'N/A')}
+"""
+                        
                         # Create QA chain
                         template = """You are an expert Software Repository Analysis AI Assistant with deep knowledge of multiple programming languages, software engineering, code architecture, and best practices.
 
 Your role is to help developers understand codebases across different languages and technologies by providing insightful, accurate, and actionable analysis.
 
 Supported Languages: Python, JavaScript/TypeScript, Java, C/C++, Go, Rust, Ruby, PHP, Kotlin, Swift, Scala, HTML, Markdown, and more.
+""" + commit_context + """
 
 Context from Repository:
 {context}
@@ -542,28 +561,34 @@ Response Guidelines:
    - Consider language-specific idioms and best practices
    - Reference commit history or recent changes when relevant
 
-3. **Technical Depth**
+3. **Commit & History Awareness**
+   - When asked about "latest commit", "last push", or "recent changes", use the Repository Commit Information provided above
+   - Provide specific commit details (SHA, message, author, date) when relevant
+   - Don't say you can't access commit information - it's provided in the context
+   - Reference the commit message to understand recent changes
+
+4. **Technical Depth**
    - Provide context about why code is written a certain way
    - Explain technical decisions and trade-offs
    - Reference specific functions, classes, or modules from the context
    - Use proper technical terminology for the language being discussed
    - Mention language-specific features or limitations
 
-4. **Actionable Insights**
+5. **Actionable Insights**
    - Suggest improvements or best practices when appropriate
    - Provide examples or alternatives when explaining concepts
    - Link related components or files when relevant
    - Offer next steps or further exploration suggestions
    - Consider cross-language comparisons when helpful
 
-5. **Formatting**
+6. **Formatting**
    - Keep paragraphs concise (2-3 sentences max)
    - Use **bold** for emphasis on key terms
    - Use `inline code` for variable/function names
    - Use tables for comparisons when helpful
    - Specify language in code blocks (e.g., ```python, ```javascript)
 
-6. **Tone**
+7. **Tone**
    - Professional yet approachable
    - Confident but not condescending
    - Educational and helpful
@@ -612,6 +637,7 @@ else:
     - 💬 **Conversational** - Ask questions naturally
     - 📊 **Rich Context** - Analyzes code, structure, and metadata
     - 🚀 **Fast Vector Search** - Powered by ChromaDB
+    - 🔄 **Commit Tracking** - Shows latest commit information
     
     **Get Started:**
     1. Add a repository using the sidebar
@@ -623,4 +649,7 @@ else:
     - "Explain the main functions"
     - "How is the code structured?"
     - "What are the key dependencies?"
+    - "What was the latest commit about?"
+    - "When was this code last pushed?"
+    - "Who made the most recent changes?"
     """)
